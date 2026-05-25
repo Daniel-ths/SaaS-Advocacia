@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 import "./globals.css";
 
 export default function DashboardLayout({
@@ -11,106 +12,141 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const [isOpen, setIsOpen] = useState(false);
-  const pathname = usePathname();
 
-  
+  const pathname = usePathname();
+  const router = useRouter();
+
+  const isLoginPage = pathname === "/login";
+
   const menuItems = [
-    { name: "Dashboard", href: "/" },
+    { name: "Início", href: "/" },
     { name: "Clientes", href: "/clientes" },
     { name: "Documentos", href: "/documentos" },
     { name: "Upload", href: "/upload" },
   ];
 
+  function isRouteActive(href: string) {
+    if (href === "/") {
+      return pathname === "/";
+    }
+
+    return pathname === href || pathname.startsWith(`${href}/`);
+  }
+
+  const currentPage =
+    menuItems.find((item) => isRouteActive(item.href))?.name || "Painel";
+
+  async function handleLogout() {
+    const supabase = createClient();
+
+    await supabase.auth.signOut();
+
+    router.replace("/login");
+    router.refresh();
+  }
+
   return (
     <html lang="pt-BR">
-      <body className="bg-slate-50 text-slate-800 antialiased min-h-screen flex flex-col md:flex-row">
-        
-       
-        <aside className={`
-          fixed inset-y-0 left-0 z-40 w-64 bg-slate-900 text-white p-5 flex flex-col justify-between
-          transform transition-transform duration-200 ease-in-out
-          md:translate-x-0 md:static md:h-screen
-          ${isOpen ? "translate-x-0" : "-translate-x-full"}
-        `}>
-          <div>
-            <div className="flex items-center justify-between mb-8">
-              <span className="text-xl font-bold tracking-wider text-indigo-400">SisAdvocacia</span>
-              
-              <button onClick={() => setIsOpen(false)} className="md:hidden text-slate-400 hover:text-white">
-                ✕
-              </button>
-            </div>
+      <body className="min-h-screen bg-slate-100 text-slate-800 antialiased">
+        {isLoginPage ? (
+          children
+        ) : (
+          <div className="min-h-screen flex">
+            <aside
+              className={`
+                fixed inset-y-0 left-0 z-40 w-64 bg-white border-r border-slate-200 p-4
+                flex flex-col justify-between transform transition-transform duration-200
+                md:translate-x-0 md:static md:h-screen
+                ${isOpen ? "translate-x-0" : "-translate-x-full"}
+              `}
+            >
+              <div>
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h1 className="text-base font-semibold text-slate-900">
+                      Sistema
+                    </h1>
+                    <p className="text-xs text-slate-500">
+                      Painel administrativo
+                    </p>
+                  </div>
 
-            <nav className="space-y-1">
-              {menuItems.map((item) => {
-                const isActive = pathname === item.href;
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
+                  <button
                     onClick={() => setIsOpen(false)}
-                    className={`flex items-center px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
-                      isActive
-                        ? "bg-indigo-600 text-white"
-                        : "text-slate-300 hover:bg-slate-800 hover:text-white"
-                    }`}
+                    className="md:hidden text-slate-500 hover:text-slate-800"
+                    type="button"
                   >
-                    {item.name}
-                  </Link>
-                );
-              })}
-            </nav>
-          </div>
+                    Fechar
+                  </button>
+                </div>
 
-         
-          <button 
-            onClick={() => alert("Saindo do sistema...")}
-            className="flex items-center justify-center w-full px-4 py-3 text-sm font-medium text-slate-300 hover:bg-red-900/50 hover:text-red-400 rounded-lg transition-colors border border-transparent hover:border-red-700/50"
-          >
-            Sair do Sistema
-          </button>
-        </aside>
+                <nav className="space-y-1">
+                  {menuItems.map((item) => {
+                    const isActive = isRouteActive(item.href);
 
-        
-        {isOpen && (
-          <div 
-            onClick={() => setIsOpen(false)} 
-            className="fixed inset-0 z-30 bg-black/40 md:hidden"
-          />
-        )}
-
-        
-        <div className="flex-1 flex flex-col min-w-0 h-screen overflow-y-auto">
-          
-          
-          <header className="bg-white border-b border-slate-200 h-16 flex items-center justify-between px-6 sticky top-0 z-20">
-            <div className="flex items-center gap-4">
-              
-              <button 
-                onClick={() => setIsOpen(true)}
-                className="md:hidden p-2 text-slate-600 hover:bg-slate-100 rounded-lg"
-              >
-                ☰
-              </button>
-              <h1 className="text-lg font-semibold text-slate-900">
-                {menuItems.find(item => item.href === pathname)?.name || "Sistema"}
-              </h1>
-            </div>
-
-            <div className="flex items-center gap-4">
-              <span className="text-sm text-slate-500 hidden sm:inline">Pedro César</span>
-              <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 font-bold flex items-center justify-center text-sm">
-                PC
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        onClick={() => setIsOpen(false)}
+                        className={`block rounded-md px-3 py-2 text-sm transition-colors ${
+                          isActive
+                            ? "bg-slate-900 text-white"
+                            : "text-slate-700 hover:bg-slate-100"
+                        }`}
+                      >
+                        {item.name}
+                      </Link>
+                    );
+                  })}
+                </nav>
               </div>
+
+              <button
+                onClick={handleLogout}
+                className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 transition-colors"
+                type="button"
+              >
+                Sair
+              </button>
+            </aside>
+
+            {isOpen && (
+              <button
+                onClick={() => setIsOpen(false)}
+                className="fixed inset-0 z-30 bg-black/30 md:hidden"
+                aria-label="Fechar menu"
+                type="button"
+              />
+            )}
+
+            <div className="flex-1 min-w-0 flex flex-col h-screen overflow-y-auto">
+              <header className="h-14 bg-white border-b border-slate-200 flex items-center justify-between px-4 sm:px-6 sticky top-0 z-20">
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => setIsOpen(true)}
+                    className="md:hidden rounded-md border border-slate-200 px-2 py-1 text-sm text-slate-700"
+                    type="button"
+                  >
+                    Menu
+                  </button>
+
+                  <h2 className="text-base font-medium text-slate-900">
+                    {currentPage}
+                  </h2>
+                </div>
+
+                <div className="text-sm text-slate-500">
+                  Conta
+                </div>
+              </header>
+
+              <main className="flex-1 w-full max-w-7xl mx-auto p-4 sm:p-6">
+                {children}
+              </main>
             </div>
-          </header>
-
-          
-          <main className="p-6 max-w-7xl w-full mx-auto flex-1">
-            {children}
-          </main>
-        </div>
-
+          </div>
+        )}
       </body>
     </html>
   );
