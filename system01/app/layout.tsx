@@ -23,6 +23,7 @@ export default function DashboardLayout({
     { name: "Clientes", href: "/clientes" },
     { name: "Documentos", href: "/documentos" },
     { name: "Upload", href: "/upload" },
+    { name: "conta", href: "/clientes/id" },
   ];
 
   function isRouteActive(href: string) {
