@@ -1,36 +1,62 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# SisAdvocacia — Neon + Drizzle
 
-## Getting Started
+Versão inicial do sistema usando **Neon PostgreSQL** e **Drizzle ORM**. Não há login nesta etapa; todos os dados ficam acessíveis a quem abrir a aplicação.
 
-First, run the development server:
+## O que está incluído
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- Cadastro, edição, busca e exclusão de clientes.
+- Cadastro e exclusão de processos vinculados a clientes.
+- Envio, listagem, download e exclusão de documentos.
+- Dashboard com dados reais do banco.
+- Migration SQL versionada em `drizzle/0000_initial.sql`.
+
+## Antes de iniciar
+
+1. Crie um projeto no Neon.
+2. No painel do Neon, clique em **Connect** e copie a URL **pooled** (a que tem `-pooler` no endereço).
+3. Copie `.env.example` para `.env.local`.
+4. Cole a URL em `DATABASE_URL`.
+
+Exemplo:
+
+```env
+DATABASE_URL="postgresql://USUARIO:SENHA@ep-exemplo-pooler.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Requisitos
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- Node.js **20.9 ou superior**. Verifique com `node -v`.
+- npm 10 ou superior. Verifique com `npm -v`.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Se o `npm install` travar ou repetir tentativas
 
-## Learn More
+No PowerShell, dentro da pasta `system01`, interrompa com `Ctrl + C` e execute:
 
-To learn more about Next.js, take a look at the following resources:
+```powershell
+Remove-Item -Recurse -Force node_modules -ErrorAction SilentlyContinue
+Remove-Item -Force package-lock.json -ErrorAction SilentlyContinue
+npm cache clean --force
+npm install --registry=https://registry.npmjs.org/
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+O arquivo `.npmrc` deste projeto já aponta para o registro público do npm.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Comandos
 
-## Deploy on Vercel
+```bash
+npm install
+npm run db:migrate
+npm run dev
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Abra `http://localhost:3000`.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Deploy na Vercel
+
+Adicione `DATABASE_URL` nas variáveis de ambiente do projeto na Vercel. Use a URL **pooled** do Neon. Rode `npm run db:migrate` uma vez na sua máquina depois de configurar o banco, antes de publicar.
+
+## Limitações temporárias importantes
+
+- **Não publique em produção enquanto não colocarmos login e permissões.** Nesta versão qualquer visitante pode ver, baixar, criar e excluir dados.
+- Os arquivos são guardados no PostgreSQL codificados em Base64, com limite de 4,5 MB. Isso é aceitável apenas durante a construção. Na etapa final, vamos mover os arquivos para armazenamento próprio, como Cloudflare R2, S3 ou Vercel Blob.
+- Ao adicionar autenticação, incluiremos um `escritorio_id`/`user_id` nas tabelas e filtraremos todas as consultas por esse identificador.

@@ -1,277 +1,115 @@
-import { createClient } from "@/lib/supabase/server";
-import { createCliente, deleteCliente } from "./actions";
+import Link from "next/link";
+import { asc, desc, ilike, or } from "drizzle-orm";
+import { criarCliente, excluirCliente } from "@/app/actions/clientes";
+import { getDb } from "@/lib/db/client";
+import { clientes } from "@/lib/db/schema";
+import { formatarData, formatarStatus } from "@/lib/format";
 
-type Cliente = {
-  id: string;
-  nome: string;
-  telefone: string | null;
-  email: string | null;
-  status: string;
-  observacao: string | null;
-  created_at: string;
-};
+const campo = "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100";
 
-function formatDate(date: string) {
-  return new Intl.DateTimeFormat("pt-BR", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  }).format(new Date(date));
-}
+export const dynamic = "force-dynamic";
 
-function getStatusLabel(status: string) {
-  const labels: Record<string, string> = {
-    lead: "Lead",
-    atendimento: "Em atendimento",
-    cliente: "Cliente",
-    arquivado: "Arquivado",
-  };
-
-  return labels[status] || status;
-}
-
-function getStatusStyle(status: string) {
-  const styles: Record<string, string> = {
-    lead: "bg-blue-50 text-blue-700 border-blue-200",
-    atendimento: "bg-amber-50 text-amber-700 border-amber-200",
-    cliente: "bg-emerald-50 text-emerald-700 border-emerald-200",
-    arquivado: "bg-slate-100 text-slate-600 border-slate-200",
-  };
-
-  return styles[status] || "bg-slate-100 text-slate-600 border-slate-200";
-}
-
-export default async function ClientesPage() {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const { data, error } = await supabase
-    .from("clientes")
-    .select("id, nome, telefone, email, status, observacao, created_at")
-    .eq("user_id", user?.id)
-    .order("created_at", { ascending: false });
-
-  const clientes = (data || []) as Cliente[];
+export default async function ClientesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string }>;
+}) {
+  const db = getDb();
+  const { q = "" } = await searchParams;
+  const busca = q.trim();
+  const lista = busca
+    ? await db
+        .select()
+        .from(clientes)
+        .where(or(ilike(clientes.nome, `%${busca}%`), ilike(clientes.email, `%${busca}%`), ilike(clientes.cpfCnpj, `%${busca}%`)))
+        .orderBy(asc(clientes.nome))
+    : await db.select().from(clientes).orderBy(desc(clientes.createdAt));
 
   return (
     <div className="space-y-6">
-      <section className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 sm:p-6">
-        <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+      <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="mb-5 flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
           <div>
-            <p className="text-sm font-medium text-indigo-600 mb-2">
-              Gestão de clientes
-            </p>
-
-            <h2 className="text-2xl font-semibold text-slate-950">
-              Clientes e leads do escritório
-            </h2>
-
-            <p className="text-sm text-slate-500 mt-2 max-w-2xl">
-              Cadastre contatos, acompanhe o status de atendimento e mantenha a
-              base separada por usuário logado.
-            </p>
-          </div>
-
-          <div className="bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 min-w-[180px]">
-            <p className="text-sm text-slate-500">Total cadastrado</p>
-            <p className="text-3xl font-semibold text-slate-950 mt-1">
-              {clientes.length}
-            </p>
+            <h2 className="text-lg font-semibold text-slate-950">Cadastro de cliente</h2>
+            <p className="mt-1 text-sm text-slate-500">Inclua os dados básicos para iniciar o atendimento.</p>
           </div>
         </div>
+
+        <form action={criarCliente} className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          <input name="nome" required placeholder="Nome completo ou razão social" className={campo} />
+          <input name="email" type="email" placeholder="E-mail" className={campo} />
+          <input name="telefone" placeholder="Telefone" className={campo} />
+          <input name="cpfCnpj" placeholder="CPF ou CNPJ" className={campo} />
+          <select name="status" defaultValue="ativo" className={campo}>
+            <option value="ativo">Ativo</option>
+            <option value="prospecto">Prospecto</option>
+            <option value="inativo">Inativo</option>
+          </select>
+          <button className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700">
+            Cadastrar cliente
+          </button>
+          <textarea name="observacao" placeholder="Observações (opcional)" className={`${campo} md:col-span-2 xl:col-span-3`} rows={2} />
+        </form>
       </section>
 
-      <section className="grid grid-cols-1 xl:grid-cols-[420px_1fr] gap-6">
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 sm:p-6 h-fit">
-          <h3 className="text-lg font-semibold text-slate-950">
-            Novo cliente
-          </h3>
-
-          <p className="text-sm text-slate-500 mt-1 mb-5">
-            Preencha os dados principais para criar um registro.
-          </p>
-
-          <form action={createCliente} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
-                Nome completo
-              </label>
-
-              <input
-                name="nome"
-                required
-                placeholder="Ex: Maria Oliveira"
-                className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
-                Telefone
-              </label>
-
-              <input
-                name="telefone"
-                placeholder="Ex: (91) 99999-9999"
-                className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
-                E-mail
-              </label>
-
-              <input
-                name="email"
-                type="email"
-                placeholder="cliente@email.com"
-                className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
-                Status
-              </label>
-
-              <select
-                name="status"
-                defaultValue="lead"
-                className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 bg-white"
-              >
-                <option value="lead">Lead</option>
-                <option value="atendimento">Em atendimento</option>
-                <option value="cliente">Cliente</option>
-                <option value="arquivado">Arquivado</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
-                Observação
-              </label>
-
-              <textarea
-                name="observacao"
-                rows={4}
-                placeholder="Ex: Cliente veio pelo WhatsApp, deseja atendimento trabalhista..."
-                className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 resize-none"
-              />
-            </div>
-
-            <button
-              type="submit"
-              className="w-full rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-4 py-3 transition-colors"
-            >
-              Cadastrar cliente
-            </button>
+      <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div className="flex flex-col justify-between gap-3 border-b border-slate-200 p-5 md:flex-row md:items-center">
+          <div>
+            <h2 className="font-semibold text-slate-950">Clientes</h2>
+            <p className="mt-1 text-sm text-slate-500">{lista.length} registro(s) encontrado(s).</p>
+          </div>
+          <form className="flex gap-2" action="/clientes">
+            <input defaultValue={busca} name="q" placeholder="Buscar por nome, e-mail ou CPF" className={`${campo} w-full sm:w-72`} />
+            <button className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">Buscar</button>
           </form>
         </div>
 
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="p-5 sm:p-6 border-b border-slate-200">
-            <h3 className="text-lg font-semibold text-slate-950">
-              Lista de clientes
-            </h3>
-
-            <p className="text-sm text-slate-500 mt-1">
-              Registros salvos no Supabase.
-            </p>
+        {lista.length === 0 ? (
+          <div className="p-10 text-center text-sm text-slate-500">Nenhum cliente encontrado.</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[47.5rem] text-left text-sm">
+              <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+                <tr>
+                  <th className="px-5 py-3 font-semibold">Cliente</th>
+                  <th className="px-5 py-3 font-semibold">Contato</th>
+                  <th className="px-5 py-3 font-semibold">Status</th>
+                  <th className="px-5 py-3 font-semibold">Cadastro</th>
+                  <th className="px-5 py-3 text-right font-semibold">Ações</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {lista.map((cliente) => (
+                  <tr key={cliente.id} className="hover:bg-slate-50/70">
+                    <td className="px-5 py-4">
+                      <Link href={`/clientes/${cliente.id}`} className="font-semibold text-slate-900 hover:text-indigo-700">
+                        {cliente.nome}
+                      </Link>
+                      <p className="mt-0.5 text-xs text-slate-500">{cliente.cpfCnpj || "CPF/CNPJ não informado"}</p>
+                    </td>
+                    <td className="px-5 py-4 text-slate-600">
+                      <p>{cliente.email || "—"}</p>
+                      <p className="mt-0.5 text-xs text-slate-500">{cliente.telefone || "—"}</p>
+                    </td>
+                    <td className="px-5 py-4">
+                      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700">{formatarStatus(cliente.status)}</span>
+                    </td>
+                    <td className="px-5 py-4 text-slate-600">{formatarData(cliente.createdAt)}</td>
+                    <td className="px-5 py-4">
+                      <div className="flex justify-end gap-3">
+                        <Link href={`/clientes/${cliente.id}`} className="font-medium text-indigo-700 hover:text-indigo-900">Abrir</Link>
+                        <form action={excluirCliente}>
+                          <input type="hidden" name="id" value={cliente.id} />
+                          <button className="font-medium text-rose-700 hover:text-rose-900">Excluir</button>
+                        </form>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-
-          {error ? (
-            <div className="p-6">
-              <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-                Erro ao carregar clientes: {error.message}
-              </div>
-            </div>
-          ) : clientes.length === 0 ? (
-            <div className="p-8 sm:p-10 text-center">
-              <div className="mx-auto w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center text-2xl mb-4">
-                👤
-              </div>
-
-              <p className="font-medium text-slate-800">
-                Nenhum cliente cadastrado ainda
-              </p>
-
-              <p className="text-sm text-slate-500 mt-1">
-                Use o formulário ao lado para criar o primeiro registro.
-              </p>
-            </div>
-          ) : (
-            <div className="divide-y divide-slate-100">
-              {clientes.map((cliente) => (
-                <div
-                  key={cliente.id}
-                  className="p-5 sm:p-6 hover:bg-slate-50 transition-colors"
-                >
-                  <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <h4 className="font-semibold text-slate-950">
-                          {cliente.nome}
-                        </h4>
-
-                        <span
-                          className={`text-xs font-medium border rounded-full px-2.5 py-1 ${getStatusStyle(
-                            cliente.status
-                          )}`}
-                        >
-                          {getStatusLabel(cliente.status)}
-                        </span>
-                      </div>
-
-                      <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm text-slate-500">
-                        <p>
-                          <span className="font-medium text-slate-700">
-                            Telefone:
-                          </span>{" "}
-                          {cliente.telefone || "-"}
-                        </p>
-
-                        <p>
-                          <span className="font-medium text-slate-700">
-                            E-mail:
-                          </span>{" "}
-                          {cliente.email || "-"}
-                        </p>
-
-                        <p>
-                          <span className="font-medium text-slate-700">
-                            Cadastro:
-                          </span>{" "}
-                          {formatDate(cliente.created_at)}
-                        </p>
-                      </div>
-
-                      {cliente.observacao && (
-                        <p className="mt-3 text-sm text-slate-600 bg-slate-50 border border-slate-200 rounded-xl p-3">
-                          {cliente.observacao}
-                        </p>
-                      )}
-                    </div>
-
-                    <form action={deleteCliente}>
-                      <input type="hidden" name="id" value={cliente.id} />
-
-                      <button
-                        type="submit"
-                        className="text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 border border-red-200 px-3 py-2 rounded-xl transition-colors"
-                      >
-                        Excluir
-                      </button>
-                    </form>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        )}
       </section>
     </div>
   );
