@@ -1,62 +1,58 @@
-# SisAdvocacia — Neon + Drizzle
+# WY Advocacia — Gestão interna
 
-Versão inicial do sistema usando **Neon PostgreSQL** e **Drizzle ORM**. Não há login nesta etapa; todos os dados ficam acessíveis a quem abrir a aplicação.
-
-## O que está incluído
-
-- Cadastro, edição, busca e exclusão de clientes.
-- Cadastro e exclusão de processos vinculados a clientes.
-- Envio, listagem, download e exclusão de documentos.
-- Dashboard com dados reais do banco.
-- Migration SQL versionada em `drizzle/0000_initial.sql`.
-
-## Antes de iniciar
-
-1. Crie um projeto no Neon.
-2. No painel do Neon, clique em **Connect** e copie a URL **pooled** (a que tem `-pooler` no endereço).
-3. Copie `.env.example` para `.env.local`.
-4. Cole a URL em `DATABASE_URL`.
-
-Exemplo:
-
-```env
-DATABASE_URL="postgresql://USUARIO:SENHA@ep-exemplo-pooler.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
-```
+Sistema interno para organização de clientes, processos, agenda jurídica, documentos, relatórios e histórico operacional.
 
 ## Requisitos
 
-- Node.js **20.9 ou superior**. Verifique com `node -v`.
-- npm 10 ou superior. Verifique com `npm -v`.
+- Node.js 20.9 ou superior;
+- Banco PostgreSQL no Neon;
+- URL pooled do Neon configurada em `DATABASE_URL`.
 
-## Se o `npm install` travar ou repetir tentativas
+## Configuração
 
-No PowerShell, dentro da pasta `system01`, interrompa com `Ctrl + C` e execute:
+Crie o arquivo `.env.local` a partir do exemplo:
 
 ```powershell
-Remove-Item -Recurse -Force node_modules -ErrorAction SilentlyContinue
-Remove-Item -Force package-lock.json -ErrorAction SilentlyContinue
-npm cache clean --force
-npm install --registry=https://registry.npmjs.org/
+Copy-Item .env.example .env.local
 ```
 
-O arquivo `.npmrc` deste projeto já aponta para o registro público do npm.
+Preencha a URL do banco e, opcionalmente, o nome temporário usado no histórico:
 
-## Comandos
+```env
+DATABASE_URL="postgresql://..."
+OPERADOR_LOCAL="Equipe WY"
+```
 
-```bash
+## Instalação e execução
+
+```powershell
 npm install
 npm run db:migrate
 npm run dev
 ```
 
-Abra `http://localhost:3000`.
+Acesse `http://localhost:3000`.
 
-## Deploy na Vercel
+## Funcionalidades atuais
 
-Adicione `DATABASE_URL` nas variáveis de ambiente do projeto na Vercel. Use a URL **pooled** do Neon. Rode `npm run db:migrate` uma vez na sua máquina depois de configurar o banco, antes de publicar.
+- Cadastro, edição, busca e exclusão de clientes;
+- Cadastro, edição e exclusão de processos;
+- Agenda jurídica com prazos, audiências, reuniões e diligências;
+- Alertas visuais de itens vencidos, do dia e dos próximos sete dias;
+- Upload, download e exclusão de documentos;
+- Relatórios gerais imprimíveis ou salváveis em PDF;
+- Histórico de alterações nas principais áreas do sistema.
 
-## Limitações temporárias importantes
+## Atenção sobre o acesso
 
-- **Não publique em produção enquanto não colocarmos login e permissões.** Nesta versão qualquer visitante pode ver, baixar, criar e excluir dados.
-- Os arquivos são guardados no PostgreSQL codificados em Base64, com limite de 4,5 MB. Isso é aceitável apenas durante a construção. Na etapa final, vamos mover os arquivos para armazenamento próprio, como Cloudflare R2, S3 ou Vercel Blob.
-- Ao adicionar autenticação, incluiremos um `escritorio_id`/`user_id` nas tabelas e filtraremos todas as consultas por esse identificador.
+A autenticação ainda está desativada. Portanto, não publique o sistema aberto para clientes ou colaboradores externos nesta fase.
+
+## Banco de dados
+
+As migrations ficam em `drizzle/`. Sempre que atualizar o projeto e houver uma nova migration, execute:
+
+```powershell
+npm run db:migrate
+```
+
+Os documentos continuam armazenados temporariamente dentro do PostgreSQL. Para produção, o recomendado é usar um bucket dedicado, como Cloudflare R2, Amazon S3 ou Vercel Blob.

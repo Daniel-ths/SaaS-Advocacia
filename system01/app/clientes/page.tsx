@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { asc, desc, ilike, or } from "drizzle-orm";
 import { criarCliente, excluirCliente } from "@/app/actions/clientes";
+import { AppIcon } from "@/components/app-icon";
+import PageHeader from "@/components/page-header";
+import StatusBadge from "@/components/status-badge";
 import { getDb } from "@/lib/db/client";
 import { clientes } from "@/lib/db/schema";
-import { formatarData, formatarStatus } from "@/lib/format";
-
-const campo = "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100";
+import { formatarData } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -21,86 +22,132 @@ export default async function ClientesPage({
     ? await db
         .select()
         .from(clientes)
-        .where(or(ilike(clientes.nome, `%${busca}%`), ilike(clientes.email, `%${busca}%`), ilike(clientes.cpfCnpj, `%${busca}%`)))
+        .where(
+          or(
+            ilike(clientes.nome, `%${busca}%`),
+            ilike(clientes.email, `%${busca}%`),
+            ilike(clientes.cpfCnpj, `%${busca}%`),
+          ),
+        )
         .orderBy(asc(clientes.nome))
     : await db.select().from(clientes).orderBy(desc(clientes.createdAt));
 
   return (
-    <div className="space-y-6">
-      <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-        <div className="mb-5 flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+    <div className="space-y-8">
+      <PageHeader
+        eyebrow="Cadastro e acompanhamento"
+        title="Clientes"
+        description="Mantenha os dados essenciais organizados desde o primeiro contato até a conclusão do atendimento."
+      />
+
+      <section className="app-panel">
+        <div className="panel-header">
           <div>
-            <h2 className="text-lg font-semibold text-slate-950">Cadastro de cliente</h2>
-            <p className="mt-1 text-sm text-slate-500">Inclua os dados básicos para iniciar o atendimento.</p>
+            <h3 className="panel-title">Novo cliente</h3>
+            <p className="panel-description">Preencha os dados básicos para iniciar um novo registro.</p>
           </div>
         </div>
 
-        <form action={criarCliente} className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          <input name="nome" required placeholder="Nome completo ou razão social" className={campo} />
-          <input name="email" type="email" placeholder="E-mail" className={campo} />
-          <input name="telefone" placeholder="Telefone" className={campo} />
-          <input name="cpfCnpj" placeholder="CPF ou CNPJ" className={campo} />
-          <select name="status" defaultValue="ativo" className={campo}>
-            <option value="ativo">Ativo</option>
-            <option value="prospecto">Prospecto</option>
-            <option value="inativo">Inativo</option>
-          </select>
-          <button className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700">
-            Cadastrar cliente
-          </button>
-          <textarea name="observacao" placeholder="Observações (opcional)" className={`${campo} md:col-span-2 xl:col-span-3`} rows={2} />
+        <form action={criarCliente} className="grid gap-4 p-5 md:grid-cols-2 xl:grid-cols-3">
+          <label className="input-label xl:col-span-2">
+            Nome completo ou razão social
+            <input name="nome" required placeholder="Ex.: Maria de Souza" className="input-field" />
+          </label>
+          <label className="input-label">
+            Status do cadastro
+            <select name="status" defaultValue="ativo" className="input-field">
+              <option value="ativo">Ativo</option>
+              <option value="prospecto">Prospecto</option>
+              <option value="inativo">Inativo</option>
+            </select>
+          </label>
+          <label className="input-label">
+            E-mail
+            <input name="email" type="email" placeholder="nome@exemplo.com" className="input-field" />
+          </label>
+          <label className="input-label">
+            Telefone
+            <input name="telefone" placeholder="(00) 00000-0000" className="input-field" />
+          </label>
+          <label className="input-label">
+            CPF ou CNPJ
+            <input name="cpfCnpj" placeholder="Somente números ou formatado" className="input-field" />
+          </label>
+          <label className="input-label md:col-span-2 xl:col-span-3">
+            Observações
+            <textarea name="observacao" placeholder="Informações importantes para o atendimento, se necessário." className="input-field" rows={3} />
+          </label>
+          <div className="flex justify-end md:col-span-2 xl:col-span-3">
+            <button className="button button-primary" type="submit">
+              <AppIcon name="plus" className="h-4 w-4" />
+              Cadastrar cliente
+            </button>
+          </div>
         </form>
       </section>
 
-      <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-        <div className="flex flex-col justify-between gap-3 border-b border-slate-200 p-5 md:flex-row md:items-center">
+      <section className="app-panel">
+        <div className="panel-header">
           <div>
-            <h2 className="font-semibold text-slate-950">Clientes</h2>
-            <p className="mt-1 text-sm text-slate-500">{lista.length} registro(s) encontrado(s).</p>
+            <h3 className="panel-title">Base de clientes</h3>
+            <p className="panel-description">
+              {lista.length} {lista.length === 1 ? "registro encontrado" : "registros encontrados"}.
+            </p>
           </div>
-          <form className="flex gap-2" action="/clientes">
-            <input defaultValue={busca} name="q" placeholder="Buscar por nome, e-mail ou CPF" className={`${campo} w-full sm:w-72`} />
-            <button className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">Buscar</button>
+          <form className="flex w-full gap-2 sm:w-auto" action="/clientes">
+            <label className="relative min-w-0 flex-1 sm:w-80">
+              <span className="sr-only">Buscar clientes</span>
+              <AppIcon name="search" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8c8579]" />
+              <input
+                defaultValue={busca}
+                name="q"
+                placeholder="Nome, e-mail ou CPF"
+                className="input-field pl-9"
+              />
+            </label>
+            <button className="button button-secondary shrink-0" type="submit">Buscar</button>
           </form>
         </div>
 
         {lista.length === 0 ? (
-          <div className="p-10 text-center text-sm text-slate-500">Nenhum cliente encontrado.</div>
+          <p className="empty-state">Nenhum cliente corresponde à busca informada.</p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[47.5rem] text-left text-sm">
-              <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+          <div className="table-scroll">
+            <table className="data-table" aria-label="Lista de clientes">
+              <thead>
                 <tr>
-                  <th className="px-5 py-3 font-semibold">Cliente</th>
-                  <th className="px-5 py-3 font-semibold">Contato</th>
-                  <th className="px-5 py-3 font-semibold">Status</th>
-                  <th className="px-5 py-3 font-semibold">Cadastro</th>
-                  <th className="px-5 py-3 text-right font-semibold">Ações</th>
+                  <th>Cliente</th>
+                  <th>Contato</th>
+                  <th>Status</th>
+                  <th>Cadastro</th>
+                  <th className="text-right">Ações</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody>
                 {lista.map((cliente) => (
-                  <tr key={cliente.id} className="hover:bg-slate-50/70">
-                    <td className="px-5 py-4">
-                      <Link href={`/clientes/${cliente.id}`} className="font-semibold text-slate-900 hover:text-indigo-700">
+                  <tr key={cliente.id}>
+                    <td>
+                      <Link href={`/clientes/${cliente.id}`} className="font-semibold text-[#2c2823] transition-colors hover:text-[#715a31]">
                         {cliente.nome}
                       </Link>
-                      <p className="mt-0.5 text-xs text-slate-500">{cliente.cpfCnpj || "CPF/CNPJ não informado"}</p>
+                      <p className="mt-1 text-xs text-[#837c71]">{cliente.cpfCnpj || "CPF/CNPJ não informado"}</p>
                     </td>
-                    <td className="px-5 py-4 text-slate-600">
+                    <td>
                       <p>{cliente.email || "—"}</p>
-                      <p className="mt-0.5 text-xs text-slate-500">{cliente.telefone || "—"}</p>
+                      <p className="mt-1 text-xs text-[#837c71]">{cliente.telefone || "—"}</p>
                     </td>
-                    <td className="px-5 py-4">
-                      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700">{formatarStatus(cliente.status)}</span>
+                    <td>
+                      <StatusBadge status={cliente.status} kind="cliente" />
                     </td>
-                    <td className="px-5 py-4 text-slate-600">{formatarData(cliente.createdAt)}</td>
-                    <td className="px-5 py-4">
-                      <div className="flex justify-end gap-3">
-                        <Link href={`/clientes/${cliente.id}`} className="font-medium text-indigo-700 hover:text-indigo-900">Abrir</Link>
+                    <td className="whitespace-nowrap text-[#69635a]">{formatarData(cliente.createdAt)}</td>
+                    <td>
+                      <div className="flex items-center justify-end gap-3">
+                        <Link href={`/clientes/${cliente.id}`} className="text-link">
+                          Abrir <AppIcon name="arrow-right" className="h-3.5 w-3.5" />
+                        </Link>
                         <form action={excluirCliente}>
                           <input type="hidden" name="id" value={cliente.id} />
-                          <button className="font-medium text-rose-700 hover:text-rose-900">Excluir</button>
+                          <button className="destructive-link" type="submit">Excluir</button>
                         </form>
                       </div>
                     </td>

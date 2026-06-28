@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { eq } from "drizzle-orm";
 import { atualizarCliente } from "@/app/actions/clientes";
+import { AppIcon } from "@/components/app-icon";
+import PageHeader from "@/components/page-header";
 import { getDb } from "@/lib/db/client";
 import { clientes } from "@/lib/db/schema";
-
-const campo = "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100";
 
 export const dynamic = "force-dynamic";
 
@@ -13,17 +13,73 @@ export default async function EditarClientePage({ params }: { params: Promise<{ 
   const { id } = await params;
   const cliente = await db.query.clientes.findFirst({ where: eq(clientes.id, id) });
 
-  if (!cliente) return <div className="rounded-xl bg-white p-6 text-sm text-slate-600">Cliente não encontrado.</div>;
+  if (!cliente) {
+    return (
+      <section className="app-panel mx-auto max-w-xl p-10 text-center">
+        <h2 className="page-title text-2xl">Cliente não encontrado</h2>
+        <Link href="/clientes" className="button button-secondary mt-6">Voltar para clientes</Link>
+      </section>
+    );
+  }
 
   const salvar = atualizarCliente.bind(null, id);
 
   return (
-    <div className="mx-auto max-w-3xl">
-      <div className="mb-5 flex items-center justify-between"><div><Link href={`/clientes/${id}`} className="text-sm font-medium text-slate-600 hover:text-indigo-700">← Voltar</Link><h2 className="mt-2 text-xl font-semibold text-slate-950">Editar cliente</h2></div></div>
-      <form action={salvar} className="space-y-5 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="grid gap-4 sm:grid-cols-2"><label className="text-sm font-medium text-slate-700">Nome<input name="nome" defaultValue={cliente.nome} required className={`${campo} mt-1.5`} /></label><label className="text-sm font-medium text-slate-700">E-mail<input name="email" type="email" defaultValue={cliente.email || ""} className={`${campo} mt-1.5`} /></label><label className="text-sm font-medium text-slate-700">Telefone<input name="telefone" defaultValue={cliente.telefone || ""} className={`${campo} mt-1.5`} /></label><label className="text-sm font-medium text-slate-700">CPF ou CNPJ<input name="cpfCnpj" defaultValue={cliente.cpfCnpj || ""} className={`${campo} mt-1.5`} /></label><label className="text-sm font-medium text-slate-700">Status<select name="status" defaultValue={cliente.status} className={`${campo} mt-1.5`}><option value="ativo">Ativo</option><option value="prospecto">Prospecto</option><option value="inativo">Inativo</option></select></label></div>
-        <label className="block text-sm font-medium text-slate-700">Observações<textarea name="observacao" defaultValue={cliente.observacao || ""} rows={4} className={`${campo} mt-1.5`} /></label>
-        <div className="flex justify-end gap-3"><Link href={`/clientes/${id}`} className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Cancelar</Link><button className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700">Salvar alterações</button></div>
+    <div className="mx-auto max-w-4xl space-y-7">
+      <Link href={`/clientes/${id}`} className="text-link">
+        <AppIcon name="arrow-left" className="h-3.5 w-3.5" />
+        Voltar para o cadastro
+      </Link>
+
+      <PageHeader
+        eyebrow="Atualização cadastral"
+        title="Editar cliente"
+        description={`Revise os dados de ${cliente.nome} e salve as alterações necessárias.`}
+      />
+
+      <form action={salvar} className="app-panel">
+        <div className="panel-header">
+          <div>
+            <h3 className="panel-title">Dados do cliente</h3>
+            <p className="panel-description">Campos marcados como obrigatórios precisam ser mantidos no cadastro.</p>
+          </div>
+        </div>
+
+        <div className="grid gap-4 p-5 sm:grid-cols-2">
+          <label className="input-label sm:col-span-2">
+            Nome completo ou razão social
+            <input name="nome" defaultValue={cliente.nome} required className="input-field" />
+          </label>
+          <label className="input-label">
+            E-mail
+            <input name="email" type="email" defaultValue={cliente.email || ""} className="input-field" />
+          </label>
+          <label className="input-label">
+            Telefone
+            <input name="telefone" defaultValue={cliente.telefone || ""} className="input-field" />
+          </label>
+          <label className="input-label">
+            CPF ou CNPJ
+            <input name="cpfCnpj" defaultValue={cliente.cpfCnpj || ""} className="input-field" />
+          </label>
+          <label className="input-label">
+            Status
+            <select name="status" defaultValue={cliente.status} className="input-field">
+              <option value="ativo">Ativo</option>
+              <option value="prospecto">Prospecto</option>
+              <option value="inativo">Inativo</option>
+            </select>
+          </label>
+          <label className="input-label sm:col-span-2">
+            Observações
+            <textarea name="observacao" defaultValue={cliente.observacao || ""} rows={5} className="input-field" />
+          </label>
+        </div>
+
+        <div className="flex flex-wrap justify-end gap-3 border-t border-[#ebe7df] px-5 py-4">
+          <Link href={`/clientes/${id}`} className="button button-secondary">Cancelar</Link>
+          <button className="button button-primary" type="submit">Salvar alterações</button>
+        </div>
       </form>
     </div>
   );

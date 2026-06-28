@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { asc } from "drizzle-orm";
 import { enviarDocumento } from "@/app/actions/documentos";
+import { AppIcon } from "@/components/app-icon";
+import PageHeader from "@/components/page-header";
 import { getDb } from "@/lib/db/client";
 import { clientes, processos } from "@/lib/db/schema";
-
-const campo = "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100";
 
 export const dynamic = "force-dynamic";
 
@@ -13,10 +13,79 @@ export default async function NovoDocumentoPage({ searchParams }: { searchParams
   const { clienteId = "" } = await searchParams;
   const [listaClientes, listaProcessos] = await Promise.all([
     db.select({ id: clientes.id, nome: clientes.nome }).from(clientes).orderBy(asc(clientes.nome)),
-    db.select({ id: processos.id, clienteId: processos.clienteId, numero: processos.numero, titulo: processos.titulo }).from(processos).orderBy(asc(processos.titulo)),
+    db
+      .select({ id: processos.id, clienteId: processos.clienteId, numero: processos.numero, titulo: processos.titulo })
+      .from(processos)
+      .orderBy(asc(processos.titulo)),
   ]);
 
   return (
-    <div className="mx-auto max-w-3xl"><Link href="/documentos" className="text-sm font-medium text-slate-600 hover:text-indigo-700">← Documentos</Link><div className="mt-4 rounded-xl border border-slate-200 bg-white p-6 shadow-sm"><h2 className="text-xl font-semibold text-slate-950">Enviar documento</h2><p className="mt-1 text-sm leading-6 text-slate-500">Nesta fase, o arquivo é salvo no PostgreSQL. Limite temporário: 4,5 MB.</p>{listaClientes.length === 0 ? <p className="mt-5 rounded-lg bg-amber-50 p-4 text-sm text-amber-800">Cadastre um cliente antes de enviar documentos. <Link href="/clientes" className="font-semibold underline">Ir para clientes</Link></p> : <form action={enviarDocumento} className="mt-6 space-y-4"><label className="block text-sm font-medium text-slate-700">Cliente<select name="clienteId" defaultValue={clienteId} required className={`${campo} mt-1.5`}><option value="" disabled>Selecione o cliente</option>{listaClientes.map((cliente) => <option key={cliente.id} value={cliente.id}>{cliente.nome}</option>)}</select></label><label className="block text-sm font-medium text-slate-700">Processo (opcional)<select name="processoId" defaultValue="" className={`${campo} mt-1.5`}><option value="">Sem processo vinculado</option>{listaProcessos.map((processo) => <option key={processo.id} value={processo.id}>{processo.numero} — {processo.titulo}</option>)}</select></label><label className="block text-sm font-medium text-slate-700">Arquivo<input name="arquivo" type="file" required className={`${campo} mt-1.5 file:mr-4 file:rounded-md file:border-0 file:bg-indigo-50 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-indigo-700`} /></label><div className="flex justify-end gap-3"><Link href="/documentos" className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Cancelar</Link><button className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700">Enviar arquivo</button></div></form>}</div></div>
+    <div className="mx-auto max-w-4xl space-y-7">
+      <Link href="/documentos" className="text-link">
+        <AppIcon name="arrow-left" className="h-3.5 w-3.5" />
+        Voltar para documentos
+      </Link>
+
+      <PageHeader
+        eyebrow="Inclusão de arquivo"
+        title="Enviar documento"
+        description="Vincule o arquivo ao cliente e, quando necessário, ao processo correspondente."
+      />
+
+      <section className="app-panel">
+        <div className="panel-header">
+          <div>
+            <h3 className="panel-title">Dados do arquivo</h3>
+            <p className="panel-description">O limite temporário de envio nesta etapa é de 4,5 MB por arquivo.</p>
+          </div>
+        </div>
+
+        {listaClientes.length === 0 ? (
+          <div className="p-5">
+            <p className="notice">
+              Cadastre um cliente antes de enviar documentos. {" "}
+              <Link href="/clientes" className="font-bold underline underline-offset-2">Ir para clientes</Link>
+            </p>
+          </div>
+        ) : (
+          <form action={enviarDocumento} className="space-y-5 p-5">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="input-label">
+                Cliente
+                <select name="clienteId" defaultValue={clienteId} required className="input-field">
+                  <option value="" disabled>Selecione o cliente</option>
+                  {listaClientes.map((cliente) => (
+                    <option key={cliente.id} value={cliente.id}>{cliente.nome}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="input-label">
+                Processo vinculado
+                <select name="processoId" defaultValue="" className="input-field">
+                  <option value="">Sem processo vinculado</option>
+                  {listaProcessos.map((processo) => (
+                    <option key={processo.id} value={processo.id}>{processo.numero} — {processo.titulo}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="input-label sm:col-span-2">
+                Arquivo
+                <input name="arquivo" type="file" required className="input-field file-field" />
+              </label>
+            </div>
+            <p className="notice">
+              Nesta fase de desenvolvimento, os arquivos são armazenados diretamente no PostgreSQL. Para produção, a recomendação é migrar o armazenamento para um bucket dedicado.
+            </p>
+            <div className="flex flex-wrap justify-end gap-3 border-t border-[#ebe7df] pt-5">
+              <Link href="/documentos" className="button button-secondary">Cancelar</Link>
+              <button className="button button-primary" type="submit">
+                <AppIcon name="plus" className="h-4 w-4" />
+                Enviar arquivo
+              </button>
+            </div>
+          </form>
+        )}
+      </section>
+    </div>
   );
 }

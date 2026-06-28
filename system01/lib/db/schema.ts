@@ -2,6 +2,7 @@ import { relations } from "drizzle-orm";
 import {
   index,
   integer,
+  jsonb,
   pgEnum,
   pgTable,
   text,
@@ -21,6 +22,20 @@ export const statusProcessoEnum = pgEnum("status_processo", [
   "em_andamento",
   "aguardando",
   "encerrado",
+]);
+
+export const tipoAgendaEnum = pgEnum("tipo_agenda", [
+  "prazo",
+  "audiencia",
+  "reuniao",
+  "diligencia",
+  "outro",
+]);
+
+export const statusAgendaEnum = pgEnum("status_agenda", [
+  "pendente",
+  "concluido",
+  "cancelado",
 ]);
 
 export const clientes = pgTable(
@@ -88,9 +103,57 @@ export const documentos = pgTable(
   ],
 );
 
+export const agendaEventos = pgTable(
+  "agenda_eventos",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    titulo: varchar("titulo", { length: 180 }).notNull(),
+    tipo: tipoAgendaEnum("tipo").default("prazo").notNull(),
+    dataHora: timestamp("data_hora", { withTimezone: true }).notNull(),
+    clienteId: uuid("cliente_id").references(() => clientes.id, {
+      onDelete: "set null",
+    }),
+    processoId: uuid("processo_id").references(() => processos.id, {
+      onDelete: "set null",
+    }),
+    lembreteDias: integer("lembrete_dias").default(3).notNull(),
+    status: statusAgendaEnum("status").default("pendente").notNull(),
+    descricao: text("descricao"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("agenda_eventos_data_hora_idx").on(table.dataHora),
+    index("agenda_eventos_status_idx").on(table.status),
+    index("agenda_eventos_cliente_idx").on(table.clienteId),
+    index("agenda_eventos_processo_idx").on(table.processoId),
+  ],
+);
+
+export const historicoAlteracoes = pgTable(
+  "historico_alteracoes",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    entidade: varchar("entidade", { length: 40 }).notNull(),
+    entidadeId: uuid("entidade_id").notNull(),
+    acao: varchar("acao", { length: 40 }).notNull(),
+    descricao: text("descricao").notNull(),
+    usuarioNome: varchar("usuario_nome", { length: 120 }).notNull(),
+    dadosAnteriores: jsonb("dados_anteriores").$type<Record<string, unknown> | null>(),
+    dadosNovos: jsonb("dados_novos").$type<Record<string, unknown> | null>(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("historico_entidade_id_idx").on(table.entidade, table.entidadeId),
+    index("historico_created_at_idx").on(table.createdAt),
+    index("historico_usuario_idx").on(table.usuarioNome),
+  ],
+);
+
 export const clientesRelations = relations(clientes, ({ many }) => ({
   processos: many(processos),
   documentos: many(documentos),
+  agendaEventos: many(agendaEventos),
 }));
 
 export const processosRelations = relations(processos, ({ one, many }) => ({
@@ -99,6 +162,7 @@ export const processosRelations = relations(processos, ({ one, many }) => ({
     references: [clientes.id],
   }),
   documentos: many(documentos),
+  agendaEventos: many(agendaEventos),
 }));
 
 export const documentosRelations = relations(documentos, ({ one }) => ({
@@ -108,6 +172,17 @@ export const documentosRelations = relations(documentos, ({ one }) => ({
   }),
   processo: one(processos, {
     fields: [documentos.processoId],
+    references: [processos.id],
+  }),
+}));
+
+export const agendaEventosRelations = relations(agendaEventos, ({ one }) => ({
+  cliente: one(clientes, {
+    fields: [agendaEventos.clienteId],
+    references: [clientes.id],
+  }),
+  processo: one(processos, {
+    fields: [agendaEventos.processoId],
     references: [processos.id],
   }),
 }));
