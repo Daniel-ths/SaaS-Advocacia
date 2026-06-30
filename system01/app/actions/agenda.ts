@@ -42,7 +42,7 @@ function dadosEvento(evento: typeof agendaEventos.$inferSelect) {
   });
 }
 
-function revalidarAgenda(clienteId?: string, eventoId?: string) {
+function revalidarAgenda(clienteId?: string | null, eventoId?: string) {
   revalidatePath("/");
   revalidatePath("/agenda");
   revalidatePath("/processos");
@@ -99,7 +99,7 @@ export async function criarEventoAgenda(formData: FormData) {
     dadosNovos: dadosEvento(novoEvento),
   });
 
-  revalidarAgenda(novoEvento.clienteId, novoEvento.id);
+revalidarAgenda(novoEvento.clienteId ?? undefined, novoEvento.id);
   redirect("/agenda");
 }
 
@@ -144,10 +144,10 @@ export async function atualizarEventoAgenda(id: string, formData: FormData) {
     dadosNovos: dadosEvento(eventoAtualizado),
   });
 
-  revalidarAgenda(eventoAnterior.clienteId, id);
-  if (eventoAtualizado.clienteId !== eventoAnterior.clienteId) {
-    revalidarAgenda(eventoAtualizado.clienteId, id);
-  }
+revalidarAgenda(eventoAnterior.clienteId, id);
+if (eventoAtualizado.clienteId !== eventoAnterior.clienteId) {
+  revalidarAgenda(eventoAtualizado.clienteId, id);
+}
   redirect("/agenda");
 }
 

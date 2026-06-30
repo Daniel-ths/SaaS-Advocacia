@@ -25,11 +25,10 @@ OPERADOR_LOCAL="Equipe WY"
 
 ## Instalação e execução
 
-```powershell
 npm install
 npm run db:migrate
 npm run dev
-```
+
 
 Acesse `http://localhost:3000`.
 
