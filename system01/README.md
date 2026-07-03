@@ -18,10 +18,6 @@ Copy-Item .env.example .env.local
 
 Preencha a URL do banco e, opcionalmente, o nome temporário usado no histórico:
 
-```env
-DATABASE_URL="postgresql://..."
-OPERADOR_LOCAL="Equipe WY"
-```
 
 ## Instalação e execução
 
